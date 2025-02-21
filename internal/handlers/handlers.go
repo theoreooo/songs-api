@@ -29,11 +29,13 @@ import (
 func GetSongs(c *gin.Context) {
 	logger.Log.Info("Получение списка песен")
 	var songs []models.Song
-	query := database.DB.Model(&models.Song{})
 
-	group := c.Query("group_name")
+	query := database.DB.Preload("Artist").Model(&models.Song{})
+
+	group := c.Query("group")
 	if group != "" {
-		query = query.Where("group ILIKE ?", "%"+group+"%")
+		query = query.Joins("JOIN artists ON artists.id = songs.artist_id").
+			Where("artists.name ILIKE ?", "%"+group+"%")
 		logger.Log.Debugf("Фильтрация по группе: %s", group)
 	}
 
@@ -74,6 +76,7 @@ func GetSongText(c *gin.Context) {
 	id := c.Param("id")
 	logger.Log.Infof("Получение текста песни id: %s", id)
 	var song models.Song
+
 	if err := database.DB.First(&song, id).Error; err != nil {
 		logger.Log.Errorf("Ошибка при получении текста песни: %v", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Песня не найдена"})
@@ -118,50 +121,66 @@ func DeleteSong(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Песня удалена"})
 }
 
-// updateSong — изменение данных песни
-// @Summary Изменение данных песни
+// updateSong — обновление данных песни
+// @Summary Обновление данных песни (частичное обновление)
 // @Tags songs
 // @Accept json
 // @Produce json
 // @Param id path int true "ID песни"
-// @Param song body models.Song true "Данные песни"
+// @Param song body models.SongUpdate true "Данные для обновления песни"
 // @Success 200 {object} models.Song
 // @Failure 400 {object} models.ErrorResponse
 // @Router /songs/{id} [put]
 func UpdateSong(c *gin.Context) {
 	id := c.Param("id")
 	logger.Log.Infof("Обновление песни id: %s", id)
+
 	var song models.Song
 	if err := database.DB.First(&song, id).Error; err != nil {
 		logger.Log.Errorf("Песня не найдена: %v", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Песня не найдена"})
+		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "Песня не найдена"})
 		return
 	}
-	logger.Log.Debugf("Песня: %v", song)
+	logger.Log.Debugf("Исходная песня: %+v", song)
 
-	var input models.Song
+	var input models.SongUpdate
 	if err := c.ShouldBindJSON(&input); err != nil {
-		logger.Log.Errorf("Ошибка при биндинге JSON для новой песни: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		logger.Log.Errorf("Ошибка при биндинге JSON для обновления песни: %v", err)
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 		return
 	}
-	logger.Log.Debugf("input: %v", input)
+	logger.Log.Debugf("Полученные данные для обновления: %+v", input)
 
-	song.GroupName = input.GroupName
-	song.Song = input.Song
-	if input.ReleaseDate != "" {
-		song.ReleaseDate = input.ReleaseDate
+	if input.GroupName != nil {
+		var artist models.Artist
+		if err := database.DB.First(&artist, song.ArtistID).Error; err != nil {
+			logger.Log.Errorf("Артист не найден: %v", err)
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "Артист не найден"})
+			return
+		}
+		artist.Name = *input.GroupName
+		if err := database.DB.Save(&artist).Error; err != nil {
+			logger.Log.Errorf("Ошибка обновления артиста: %v", err)
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			return
+		}
 	}
-	if input.Text != "" {
-		song.Text = input.Text
+	if input.Song != nil {
+		song.Song = *input.Song
 	}
-	if input.Link != "" {
-		song.Link = input.Link
+	if input.ReleaseDate != nil {
+		song.ReleaseDate = *input.ReleaseDate
+	}
+	if input.Text != nil {
+		song.Text = *input.Text
+	}
+	if input.Link != nil {
+		song.Link = *input.Link
 	}
 
 	if err := database.DB.Save(&song).Error; err != nil {
 		logger.Log.Errorf("Ошибка сохранения обновлений в БД: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 	logger.Log.Info("Песня успешно обновлена в БД")
@@ -202,8 +221,23 @@ func AddSong(c *gin.Context) {
 	}
 	logger.Log.Debugf("Данные полученные о песне с внешнего API: %v", detail)
 
+	var artist models.Artist
+	if err := database.DB.Where("name ILIKE ?", group).First(&artist).Error; err != nil {
+		artist = models.Artist{
+			Name: group,
+		}
+		if err := database.DB.Create(&artist).Error; err != nil {
+			logger.Log.Errorf("Ошибка создания артиста: %v", err)
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			return
+		}
+		logger.Log.Infof("Создан новый артист: %v", artist)
+	} else {
+		logger.Log.Infof("Найден существующий артист: %v", artist)
+	}
+
 	newSong := models.Song{
-		GroupName:   group,
+		ArtistID:    artist.ID,
 		Song:        songTitle,
 		ReleaseDate: detail.ReleaseDate,
 		Text:        detail.Text,
