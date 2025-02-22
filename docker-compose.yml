@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  songs:
+    build: ./
+    command: ./wait-for-postgres.sh db ./songs
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "host=db user=postgres password=0845 dbname=music_db port=5432 sslmode=disable TimeZone=Europe/Moscow"
+      port: "8080"
+      POSTGRES_PASSWORD: "0845"
+      MUSIC_API_URL: "http://localhost:8081"
+
+
+  db:
+    restart: always
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: music_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "0845"
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+
+volumes:
+  db_data:
