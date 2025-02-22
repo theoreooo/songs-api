@@ -58,7 +58,7 @@ http://localhost:8080/swagger/index.html
 Здесь доступна полная документация API, описание всех эндпоинтов и примеры запросов/ответов.
 ## Внимание
 В файле .env и в docker-compose.yml нужно указать MUSIC_API_URL API для получения данных о песне. Иначе метод POST для добавления песни не будет работать.
-Для тестирования вы можете запустить этот API https://github.com/theoreooo/external-api-songs.
+Для тестирования вы можете запустить этот API https://github.com/theoreooo/external-api-songs(Тогда ничего не надо будет менять в файлах env и docker-compose.yml, будет использоваться порт 8081).
 Описание внешнего API:
 ```bash
 paths:
