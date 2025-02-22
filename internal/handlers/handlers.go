@@ -24,7 +24,7 @@ import (
 // @Param song query string false "Название песни для фильтрации (регистр не важен)"
 // @Param releaseDate query string false "Дата релиза для фильтрации(в формате YYYY-MM-DD)"
 // @Param text query string false "Фрагмент текста песни для поиска"
-// @Param link query string false "Фрагмент URL ссылки для поиска"
+// @Param link query string false "Полная URL ссылка для поиска"
 // @Param page query int false "Номер страницы (по умолчанию 1)"
 // @Param pageSize query int false "Размер страницы (по умолчанию 10)"
 // @Success 200 {array} models.Song
@@ -57,7 +57,7 @@ func GetSongs(c *gin.Context) {
 	}
 
 	if link := c.Query("link"); link != "" {
-		query = query.Where("songs.link ILIKE ?", "%"+link+"%")
+		query = query.Where("songs.link = ?", link)
 		logger.Log.Debugf("Фильтрация по ссылке: %s", link)
 	}
 
@@ -205,6 +205,7 @@ func PatchSong(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
 			return
 		}
+		song.Artist = artist
 	}
 	if input.Song != nil {
 		song.Song = *input.Song
@@ -234,7 +235,7 @@ func PatchSong(c *gin.Context) {
 // @Tags songs
 // @Accept json
 // @Produce json
-// @Param song body map[string]string true "Данные песни (обязательные поля: group и song)"
+// @Param song body map[string]string true "Данные песни (обязательные поля: group и song. Чувствителен к регистру.)"
 // @Success 201 {object} models.Song "Созданная песня с данными из внешнего API"
 // @Failure 400 {object} models.ErrorResponse "Ошибка валидации входных данных"
 // @Failure 500 {object} models.ErrorResponse "Ошибка при получении данных с внешнего API или сохранении в БД"

@@ -12,7 +12,7 @@ services:
       DATABASE_URL: "host=db user=postgres password=0845 dbname=music_db port=5432 sslmode=disable TimeZone=Europe/Moscow"
       port: "8080"
       POSTGRES_PASSWORD: "0845"
-      MUSIC_API_URL: "http://localhost:8081"
+      MUSIC_API_URL: "http://host.docker.internal:8081"
 
 
   db:

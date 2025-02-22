@@ -82,7 +82,7 @@ paths:
         in: query
         name: text
         type: string
-      - description: Фрагмент URL ссылки для поиска
+      - description: Полная URL ссылка для поиска
         in: query
         name: link
         type: string
@@ -116,7 +116,8 @@ paths:
       description: Добавляет новую песню, обогащая данные через внешний API. Если
         артист с указанным именем не существует, он создается.
       parameters:
-      - description: 'Данные песни (обязательные поля: group и song)'
+      - description: 'Данные песни (обязательные поля: group и song. Чувствителен
+          к регистру.)'
         in: body
         name: song
         required: true

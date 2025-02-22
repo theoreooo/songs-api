@@ -55,7 +55,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Фрагмент URL ссылки для поиска",
+                        "description": "Полная URL ссылка для поиска",
                         "name": "link",
                         "in": "query"
                     },
@@ -104,7 +104,7 @@ const docTemplate = `{
                 "summary": "Добавление новой песни",
                 "parameters": [
                     {
-                        "description": "Данные песни (обязательные поля: group и song)",
+                        "description": "Данные песни (обязательные поля: group и song. Чувствителен к регистру.)",
                         "name": "song",
                         "in": "body",
                         "required": true,

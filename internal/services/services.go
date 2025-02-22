@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"songs/config"
@@ -18,10 +19,18 @@ func FetchSongDetail(group, songTitle string) (*models.SongDetail, error) {
 		return nil, fmt.Errorf("MUSIC_API_URL не задан")
 	}
 
-	url := fmt.Sprintf("%s/info?group=%s&song=%s", apiBase, group, songTitle)
-	logger.Log.Debugf("URL: %s", url)
+	u, err := url.Parse(fmt.Sprintf("%s/info", apiBase))
+	if err != nil {
+		return nil, fmt.Errorf("не удалось разобрать базовый URL: %v", err)
+	}
 
-	resp, err := http.Get(url)
+	q := u.Query()
+	q.Set("group", group)
+	q.Set("song", songTitle)
+	u.RawQuery = q.Encode()
+	logger.Log.Debugf("URL: %s", u.String())
+
+	resp, err := http.Get(u.String())
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса к внешнему API: %v", err)
 	}
