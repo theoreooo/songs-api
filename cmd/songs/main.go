@@ -18,6 +18,11 @@ func main() {
 	router.Use(gin.Logger())
 
 	router.GET("/songs", handlers.GetSongs)
+	router.GET("/songs/:id", handlers.GetSong)
+	router.GET("/songs/:id/text", handlers.GetSongText)
+	router.POST("/songs", handlers.AddSong)
+	router.PATCH("/songs/:id", handlers.PatchSong)
+	router.DELETE("/songs/:id", handlers.DeleteSong)
 
 	port := config.Get("PORT")
 	if port == "" {

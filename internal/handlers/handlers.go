@@ -13,14 +13,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// getSongs — получение списка песен с фильтрацией по полям и пагинацией
-// @Summary Получение песен с фильтрацией и пагинацией
-// @Description Получает список песен с фильтрацией по полям (например, group и song) и поддержкой пагинации
+// GetSongs godoc
+// @Summary Получение списка песен с фильтрацией
+// @Description Возвращает список песен. Можно фильтровать по названию песни, группе, дате релиза и другим полям.
 // @Tags songs
 // @Accept json
 // @Produce json
-// @Param group query string false "Группа"
-// @Param song query string false "Название песни"
+// @Param group query string false "Название группы для фильтрации (регистр не важен)"
+// @Param song query string false "Название песни для фильтрации (регистр не важен)"
+// @Param releaseDate query string false "Дата релиза (в формате YYYY-MM-DD) для фильтрации"
+// @Param text query string false "Фрагмент текста песни для поиска"
+// @Param link query string false "Фрагмент URL ссылки для поиска"
 // @Param page query int false "Номер страницы (по умолчанию 1)"
 // @Param pageSize query int false "Размер страницы (по умолчанию 10)"
 // @Success 200 {array} models.Song
@@ -29,22 +32,33 @@ import (
 func GetSongs(c *gin.Context) {
 	logger.Log.Info("Получение списка песен")
 	var songs []models.Song
-
 	query := database.DB.Preload("Artist").Model(&models.Song{})
 
-	group := c.Query("group")
-	if group != "" {
+	if group := c.Query("group"); group != "" {
 		query = query.Joins("JOIN artists ON artists.id = songs.artist_id").
 			Where("artists.name ILIKE ?", "%"+group+"%")
 		logger.Log.Debugf("Фильтрация по группе: %s", group)
 	}
 
-	songTitle := c.Query("song")
-	if songTitle != "" {
-		query = query.Where("song ILIKE ?", "%"+songTitle+"%")
+	if songTitle := c.Query("song"); songTitle != "" {
+		query = query.Where("songs.song ILIKE ?", "%"+songTitle+"%")
 		logger.Log.Debugf("Фильтрация по названию песни: %s", songTitle)
 	}
-	logger.Log.Debugf("Фильтры - group: %s, song: %s", group, songTitle)
+
+	if releaseDate := c.Query("releaseDate"); releaseDate != "" {
+		query = query.Where("DATE(songs.release_date) = ?", releaseDate)
+		logger.Log.Debugf("Фильтрация по дате релиза: %s", releaseDate)
+	}
+
+	if text := c.Query("text"); text != "" {
+		query = query.Where("songs.text ILIKE ?", "%"+text+"%")
+		logger.Log.Debugf("Фильтрация по тексту: %s", text)
+	}
+
+	if link := c.Query("link"); link != "" {
+		query = query.Where("songs.link ILIKE ?", "%"+link+"%")
+		logger.Log.Debugf("Фильтрация по ссылке: %s", link)
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
@@ -53,24 +67,48 @@ func GetSongs(c *gin.Context) {
 
 	if err := query.Limit(pageSize).Offset(offset).Find(&songs).Error; err != nil {
 		logger.Log.Errorf("Ошибка при получении песен: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 	logger.Log.Info("Песни успешно получены")
 	c.JSON(http.StatusOK, songs)
 }
 
-// getSongText — получение текста песни с пагинацией по куплетам
+// GetSong godoc
+// @Summary Получение детальной информации о песне
+// @Description Возвращает информацию о песне по указанному ID, включая данные артиста.
+// @Tags songs
+// @Accept json
+// @Produce json
+// @Param id path int true "ID песни"
+// @Success 200 {object} models.Song "Данные песни, включая артиста"
+// @Failure 404 {object} models.ErrorResponse "Песня не найдена"
+// @Router /songs/{id} [get]
+func GetSong(c *gin.Context) {
+	id := c.Param("id")
+	logger.Log.Infof("Получение песни id: %s", id)
+	var song models.Song
+
+	if err := database.DB.Preload("Artist").First(&song, id).Error; err != nil {
+		logger.Log.Errorf("Песня не найдена: %v", err)
+		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "Песня не найдена"})
+		return
+	}
+	logger.Log.Infof("Песня успешно получена: %+v", song)
+	c.JSON(http.StatusOK, song)
+}
+
+// GetSongText godoc
 // @Summary Получение текста песни с пагинацией по куплетам
-// @Description Разбивает текст песни на куплеты и возвращает запрошенную страницу
+// @Description Разбивает текст песни на куплеты и возвращает запрошенную страницу.
 // @Tags songs
 // @Accept json
 // @Produce json
 // @Param id path int true "ID песни"
 // @Param page query int false "Номер страницы (по умолчанию 1)"
 // @Param pageSize query int false "Размер страницы (по умолчанию 5)"
-// @Success 200 {object}  models.MessageResponse
-// @Failure 404 {object} models.ErrorResponse
+// @Success 200 {object} models.MessageResponse "Ответ содержит массив строк куплетов"
+// @Failure 404 {object} models.ErrorResponse "Песня не найдена"
 // @Router /songs/{id}/text [get]
 func GetSongText(c *gin.Context) {
 	id := c.Param("id")
@@ -100,14 +138,15 @@ func GetSongText(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"verses": verses[start:end]})
 }
 
-// deleteSong — удаление песни по ID
+// DeleteSong godoc
 // @Summary Удаление песни
+// @Description Удаляет песню по указанному ID.
 // @Tags songs
 // @Accept json
 // @Produce json
 // @Param id path int true "ID песни"
-// @Success 200 {object} models.MessageResponse
-// @Failure 404 {object} models.ErrorResponse
+// @Success 200 {object} models.MessageResponse "Песня успешно удалена"
+// @Failure 404 {object} models.ErrorResponse "Песня не найдена"
 // @Router /songs/{id} [delete]
 func DeleteSong(c *gin.Context) {
 	id := c.Param("id")
@@ -121,19 +160,20 @@ func DeleteSong(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Песня удалена"})
 }
 
-// updateSong — обновление данных песни
-// @Summary Обновление данных песни (частичное обновление)
+// PatchSong godoc
+// @Summary Частичное обновление данных песни
+// @Description Обновляет указанные поля песни по ID. Если поле не передано, оно не изменяется.
 // @Tags songs
 // @Accept json
 // @Produce json
 // @Param id path int true "ID песни"
 // @Param song body models.SongUpdate true "Данные для обновления песни"
-// @Success 200 {object} models.Song
-// @Failure 400 {object} models.ErrorResponse
-// @Router /songs/{id} [put]
-func UpdateSong(c *gin.Context) {
+// @Success 200 {object} models.Song "Обновлённые данные песни"
+// @Failure 400 {object} models.ErrorResponse "Ошибка в запросе или данные невалидны"
+// @Router /songs/{id} [patch]
+func PatchSong(c *gin.Context) {
 	id := c.Param("id")
-	logger.Log.Infof("Обновление песни id: %s", id)
+	logger.Log.Infof("Частичное обновление песни id: %s", id)
 
 	var song models.Song
 	if err := database.DB.First(&song, id).Error; err != nil {
@@ -187,14 +227,16 @@ func UpdateSong(c *gin.Context) {
 	c.JSON(http.StatusOK, song)
 }
 
-// addSong — добавление новой песни. При добавлении делается запрос во внешнее API для обогащения данных
+// AddSong godoc
 // @Summary Добавление новой песни
+// @Description Добавляет новую песню, обогащая данные через внешний API. Если артист с указанным именем не существует, он создается.
 // @Tags songs
 // @Accept json
 // @Produce json
 // @Param song body map[string]string true "Данные песни (обязательные поля: group и song)"
-// @Success 201 {object} models.Song
-// @Failure 400 {object} models.ErrorResponse
+// @Success 201 {object} models.Song "Созданная песня с данными из внешнего API"
+// @Failure 400 {object} models.ErrorResponse "Ошибка валидации входных данных"
+// @Failure 500 {object} models.ErrorResponse "Ошибка при получении данных с внешнего API или сохранении в БД"
 // @Router /songs [post]
 func AddSong(c *gin.Context) {
 	logger.Log.Info("Добавление песни")
