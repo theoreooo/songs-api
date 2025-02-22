@@ -43,7 +43,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Дата релиза (в формате YYYY-MM-DD) для фильтрации",
+                        "description": "Дата релиза для фильтрации(в формате YYYY-MM-DD)",
                         "name": "releaseDate",
                         "in": "query"
                     },
@@ -91,6 +91,7 @@ const docTemplate = `{
                 }
             },
             "post": {
+                "description": "Добавляет новую песню, обогащая данные через внешний API. Если артист с указанным именем не существует, он создается.",
                 "consumes": [
                     "application/json"
                 ],
@@ -117,13 +118,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Созданная песня с данными из внешнего API",
                         "schema": {
                             "$ref": "#/definitions/models.Song"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Ошибка валидации входных данных",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка при получении данных с внешнего API или сохранении в БД",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -133,6 +140,7 @@ const docTemplate = `{
         },
         "/songs/{id}": {
             "get": {
+                "description": "Возвращает информацию о песне по указанному ID, включая данные артиста.",
                 "consumes": [
                     "application/json"
                 ],
@@ -142,7 +150,7 @@ const docTemplate = `{
                 "tags": [
                     "songs"
                 ],
-                "summary": "Получение информации о песне",
+                "summary": "Получение детальной информации о песне",
                 "parameters": [
                     {
                         "type": "integer",
@@ -154,13 +162,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Данные песни, включая артиста",
                         "schema": {
                             "$ref": "#/definitions/models.Song"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Песня не найдена",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -168,6 +176,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
+                "description": "Удаляет песню по указанному ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -189,13 +198,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Песня успешно удалена",
                         "schema": {
                             "$ref": "#/definitions/models.MessageResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Песня не найдена",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -203,6 +212,7 @@ const docTemplate = `{
                 }
             },
             "patch": {
+                "description": "Обновляет указанные поля песни по ID. Если поле не передано, оно не изменяется.",
                 "consumes": [
                     "application/json"
                 ],
@@ -222,7 +232,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Данные для обновления песни",
+                        "description": "Данные для обновления песни (releaseDate в формате YYYY-MM-DD)",
                         "name": "song",
                         "in": "body",
                         "required": true,
@@ -233,13 +243,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Обновлённые данные песни",
                         "schema": {
                             "$ref": "#/definitions/models.Song"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Ошибка в запросе или данные невалидны",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -249,7 +259,7 @@ const docTemplate = `{
         },
         "/songs/{id}/text": {
             "get": {
-                "description": "Разбивает текст песни на куплеты и возвращает запрошенную страницу",
+                "description": "Разбивает текст песни на куплеты и возвращает запрошенную страницу.",
                 "consumes": [
                     "application/json"
                 ],
@@ -283,13 +293,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Ответ содержит массив строк куплетов",
                         "schema": {
                             "$ref": "#/definitions/models.MessageResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Песня не найдена",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -351,7 +361,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "releaseDate": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2025-01-16"
                 },
                 "song": {
                     "type": "string"
@@ -374,7 +385,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "releaseDate": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2025-01-16"
                 },
                 "song": {
                     "type": "string"

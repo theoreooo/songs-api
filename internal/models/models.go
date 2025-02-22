@@ -9,7 +9,7 @@ type Song struct {
 	ArtistID    uint      `gorm:"index" json:"artistId"`
 	Artist      Artist    `gorm:"foreignKey:ArtistID" json:"artist"`
 	Song        string    `gorm:"not null" json:"song"`
-	ReleaseDate time.Time `json:"releaseDate"`
+	ReleaseDate time.Time `json:"releaseDate" example:"2025-01-16"`
 	Text        string    `json:"text"`
 	Link        string    `json:"link"`
 	CreatedAt   time.Time `json:"createdAt"`
@@ -26,15 +26,15 @@ type Artist struct {
 type SongUpdate struct {
 	GroupName   *string    `json:"group,omitempty"`
 	Song        *string    `json:"song,omitempty"`
-	ReleaseDate *time.Time `json:"releaseDate,omitempty"`
+	ReleaseDate *time.Time `json:"releaseDate,omitempty" example:"2025-01-16"`
 	Text        *string    `json:"text,omitempty"`
 	Link        *string    `json:"link,omitempty"`
 }
 
 type SongDetail struct {
-	ReleaseDate time.Time `json:"releaseDate"`
-	Text        string    `json:"text"`
-	Link        string    `json:"link"`
+	ReleaseDate string `json:"releaseDate"`
+	Text        string `json:"text"`
+	Link        string `json:"link"`
 }
 
 type ErrorResponse struct {

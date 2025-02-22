@@ -4,6 +4,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"songs/database"
 	"songs/internal/logger"
@@ -21,7 +22,7 @@ import (
 // @Produce json
 // @Param group query string false "Название группы для фильтрации (регистр не важен)"
 // @Param song query string false "Название песни для фильтрации (регистр не важен)"
-// @Param releaseDate query string false "Дата релиза (в формате YYYY-MM-DD) для фильтрации"
+// @Param releaseDate query string false "Дата релиза для фильтрации(в формате YYYY-MM-DD)"
 // @Param text query string false "Фрагмент текста песни для поиска"
 // @Param link query string false "Фрагмент URL ссылки для поиска"
 // @Param page query int false "Номер страницы (по умолчанию 1)"
@@ -167,7 +168,7 @@ func DeleteSong(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path int true "ID песни"
-// @Param song body models.SongUpdate true "Данные для обновления песни"
+// @Param song body models.SongUpdate true "Данные для обновления песни (releaseDate в формате YYYY-MM-DD)"
 // @Success 200 {object} models.Song "Обновлённые данные песни"
 // @Failure 400 {object} models.ErrorResponse "Ошибка в запросе или данные невалидны"
 // @Router /songs/{id} [patch]
@@ -278,10 +279,16 @@ func AddSong(c *gin.Context) {
 		logger.Log.Infof("Найден существующий артист: %v", artist)
 	}
 
+	layout := "02.01.2006"
+	parsedDate, err := time.Parse(layout, detail.ReleaseDate)
+	if err != nil {
+		logger.Log.Errorf("ошибка парсинга даты: %v", err)
+	}
+
 	newSong := models.Song{
 		ArtistID:    artist.ID,
 		Song:        songTitle,
-		ReleaseDate: detail.ReleaseDate,
+		ReleaseDate: parsedDate,
 		Text:        detail.Text,
 		Link:        detail.Link,
 	}
