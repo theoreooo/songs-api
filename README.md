@@ -40,13 +40,14 @@ docker-compose up --build
 ```bash
 go mod download
 ```
-2. Соберите приложение:
-```bash
-go build -o songs ./cmd/songs/main.go
-```
-3. Запустите приложение, убедившись, что PostgreSQL запущен и настроен согласно переменной DATABASE_URL в файле .env:
+2. Настройте файл конфигурации .env
+3. Убедитесь, что PostgreSQL запущен и настроен согласно переменной DATABASE_URL в файле .env:
 ```bash
 DATABASE_URL=host=db user=postgres password=0845 dbname=music_db port=5432 sslmode=disable TimeZone=Europe/Moscow
+```
+3. Запустите приложение:
+```bash
+go run ./cmd/songs/main.go
 ```
 ## Swagger-документация
 Swagger-документация
@@ -56,7 +57,9 @@ http://localhost:8080/swagger/index.html
 ```
 Здесь доступна полная документация API, описание всех эндпоинтов и примеры запросов/ответов.
 ## Внимание
-В файле .env и в docker-compose.yml нужно указать MUSIC_API_URL API для получения данных о песне. Иначе метод POST для добавления песни не будет работать. Описание внешнего API
+В файле .env и в docker-compose.yml нужно указать MUSIC_API_URL API для получения данных о песне. Иначе метод POST для добавления песни не будет работать.
+Для тестирования вы можете запустить этот API https://github.com/theoreooo/external-api-songs.
+Описание внешнего API:
 ```bash
 paths:
   /info:
