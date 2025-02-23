@@ -7,14 +7,19 @@ services:
     ports:
       - "8080:8080"
     depends_on:
+      - redis
       - db
     environment:
       DATABASE_URL: "host=db user=postgres password=0845 dbname=music_db port=5432 sslmode=disable TimeZone=Europe/Moscow"
-      port: "8080"
+      REDIS_ADDR: "redis:6379"
+      port: "8080"  
       POSTGRES_PASSWORD: "0845"
       MUSIC_API_URL: "http://host.docker.internal:8081"
 
-
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
   db:
     restart: always
     image: postgres:latest

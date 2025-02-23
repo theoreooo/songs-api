@@ -2,11 +2,14 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
 	"songs/database"
+	"songs/internal/cache"
 	"songs/internal/logger"
 	"songs/internal/models"
 	"songs/internal/services"
@@ -88,13 +91,28 @@ func GetSongs(c *gin.Context) {
 func GetSong(c *gin.Context) {
 	id := c.Param("id")
 	logger.Log.Infof("Получение песни id: %s", id)
+
 	var song models.Song
+
+	cachedData, err := cache.Rdb.Get(context.Background(), "song:"+id).Result()
+	if err == nil {
+		logger.Log.Infof("Песня есть в кеше id песни: %s", id)
+		if jsonErr := json.Unmarshal([]byte(cachedData), &song); jsonErr == nil {
+			c.JSON(http.StatusOK, song)
+			return
+		}
+	}
 
 	if err := database.DB.Preload("Artist").First(&song, id).Error; err != nil {
 		logger.Log.Errorf("Песня не найдена: %v", err)
 		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "Песня не найдена"})
 		return
 	}
+
+	dataBytes, _ := json.Marshal(song)
+	cache.Rdb.Set(context.Background(), "song:"+id, dataBytes, 5*time.Minute)
+	logger.Log.Infof("Песня добавлена в кеш %s", dataBytes)
+
 	logger.Log.Infof("Песня успешно получена: %+v", song)
 	c.JSON(http.StatusOK, song)
 }
@@ -157,6 +175,7 @@ func DeleteSong(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Песня не найдена"})
 		return
 	}
+	cache.Rdb.Del(context.Background(), "song:"+id)
 	logger.Log.Info("Песня успешно удалена в БД")
 	c.JSON(http.StatusOK, gin.H{"message": "Песня удалена"})
 }
@@ -225,6 +244,7 @@ func PatchSong(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
 		return
 	}
+	cache.Rdb.Del(context.Background(), "song:"+id)
 	logger.Log.Info("Песня успешно обновлена в БД")
 	c.JSON(http.StatusOK, song)
 }

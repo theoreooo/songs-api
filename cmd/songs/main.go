@@ -3,6 +3,7 @@ package main
 import (
 	"songs/config"
 	"songs/database"
+	"songs/internal/cache"
 	"songs/internal/handlers"
 	"songs/internal/logger"
 
@@ -16,6 +17,7 @@ import (
 func main() {
 	logger.Log.Info("Старт приложениия")
 
+	cache.InitRedis()
 	database.Init()
 
 	router := gin.Default()
